@@ -1,0 +1,134 @@
+
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Plancton Vague - Traînée Fluide</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: black;
+      overflow: hidden;
+      touch-action: none;
+    }
+    canvas {
+      display: block;
+    }
+  </style>
+</head>
+<body>
+<canvas id="canvas"></canvas>
+<script>
+  const canvas = document.getElementById("canvas");
+  const ctx = canvas.getContext("2d");
+  let width = canvas.width = window.innerWidth;
+  let height = canvas.height = window.innerHeight;
+
+  const numParticles = 3000;
+  const particles = [];
+  const touches = [];
+
+  window.addEventListener("resize", () => {
+    width = canvas.width = window.innerWidth;
+    height = canvas.height = window.innerHeight;
+    particles.length = 0;
+    initParticles();
+  });
+
+  class Particle {
+    constructor() {
+      this.originX = Math.random() * width;
+      this.originY = Math.random() * height;
+      this.x = this.originX;
+      this.y = this.originY;
+      this.vx = 0;
+      this.vy = 0;
+      this.radius = Math.random() * 0.8 + 0.3;
+      this.baseAlpha = 0;
+      this.alpha = this.baseAlpha;
+    }
+
+    update() {
+      for (let t of touches) {
+        const dx = this.x - t.x;
+        const dy = this.y - t.y;
+        const distSq = dx * dx + dy * dy;
+        const dist = Math.sqrt(distSq);
+        if (dist < 50) { // zone de poussée plus petite
+          const force = (50 - dist) / 50;
+          const angle = Math.atan2(dy, dx);
+          this.vx += Math.cos(angle) * force * 3;
+          this.vy += Math.sin(angle) * force * 3;
+          this.alpha = 1.5; // plus lumineux
+        }
+      }
+
+      // effet de retour
+      const dxOrigin = this.originX - this.x;
+      const dyOrigin = this.originY - this.y;
+      this.vx += dxOrigin * 0.01;
+      this.vy += dyOrigin * 0.01;
+
+      this.vx *= 0.88;
+      this.vy *= 0.88;
+
+      this.x += this.vx;
+      this.y += this.vy;
+
+      this.alpha *= 0.94;
+      if (this.alpha < this.baseAlpha) this.alpha = this.baseAlpha;
+    }
+
+    draw() {
+      ctx.beginPath();
+      ctx.fillStyle = `rgba(0, 190, 255, ${this.alpha})`; // bleu un peu plus intense
+      ctx.arc(this.x, this.y, this.radius * 1.5, 0, Math.PI * 2); // plus gros effet lumineux
+      ctx.fill();
+    }
+  }
+
+  function initParticles() {
+    for (let i = 0; i < numParticles; i++) {
+      particles.push(new Particle());
+    }
+  }
+
+  initParticles();
+
+  function animate() {
+    ctx.fillStyle = "rgba(0, 0, 0, 0.1)";
+    ctx.fillRect(0, 0, width, height);
+
+    for (let p of particles) {
+      p.update();
+      p.draw();
+    }
+
+    requestAnimationFrame(animate);
+  }
+
+  function handleMouseMove(e) {
+    touches.length = 0;
+    touches.push({ x: e.clientX, y: e.clientY });
+  }
+
+  function handleTouchMove(e) {
+    e.preventDefault();
+    touches.length = 0;
+    for (let i = 0; i < e.touches.length; i++) {
+      touches.push({
+        x: e.touches[i].clientX,
+        y: e.touches[i].clientY
+      });
+    }
+  }
+
+  canvas.addEventListener("mousemove", handleMouseMove);
+  canvas.addEventListener("touchmove", handleTouchMove, { passive: false });
+
+  animate();
+</script>
+</body>
+</html>
